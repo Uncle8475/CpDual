@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+
 const ChallengeSchema = new mongoose.Schema({
   challengeId: {
     type: String,
@@ -13,6 +14,14 @@ const ChallengeSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  senderRating: {
+    type: Number,
+    required: true
+  },
+  receiverRating: {
+    type: Number,
+    required: true
+  },
   status: {
     type: String,
     enum: ['pending', 'accepted', 'rejected'],
@@ -21,7 +30,23 @@ const ChallengeSchema = new mongoose.Schema({
   timestamp: {
     type: Date,
     default: Date.now
+  },
+  questions: [
+    {
+      contestId: Number,
+      index: String,
+      name: String,
+      url: String
+    }
+  ],
+  startTime: Date,
+  endTime: Date,
+  winner: {
+    type: String,
+    enum: ['sender', 'receiver', null],
+    default: null
   }
 });
 
-module.exports = mongoose.model('Challenge', ChallengeSchema);
+const Challenge = mongoose.model('Challenge', ChallengeSchema);
+export default Challenge;

@@ -8,7 +8,7 @@ import challengeRoutes from "./Routes/challengeRoutes.js";
 import fetchAndStoreProblems from "./utils/allQuestions.js";
 // import submissionRoutes from "./Routes/submissionRoutes.js";
 
-
+import "./utils/problemTracker.js";
 dotenv.config();
 connectDb();
 

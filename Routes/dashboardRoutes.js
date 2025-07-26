@@ -6,5 +6,5 @@ const router=express.Router();
 
 router.post("/register",RegisterUser)
 router.post("/login",LoginUser)
-router.get("/info",tokenHandler,DashboardUser);
+router.get("/info/:handle",tokenHandler,DashboardUser);
 export default router;

@@ -1,7 +1,7 @@
 import asyncHandler from "express-async-handler";
 import jwt from "jsonwebtoken";
 
-// Middleware to protect routes
+// Middleware 
 const tokenHandler = asyncHandler(async (req, res, next) => {
   const authHeader = req.headers.authorization || req.headers.Authorization;
 
@@ -17,7 +17,7 @@ const tokenHandler = asyncHandler(async (req, res, next) => {
     req.user = decoded.user; // contains { handle, email, id }
     next();
   } catch (err) {
-    res.status(403); 
+    res.status(403);
     throw new Error("ACCESS DENIED: Invalid or expired token");
   }
 });

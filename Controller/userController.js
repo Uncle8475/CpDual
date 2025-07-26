@@ -90,7 +90,8 @@ const LoginUser = asyncHandler(async (req, res) => {
     } catch (err) {
       console.error("Failed to update Codeforces info:", err.message);
     }
-    //  jwt token making
+    
+    // Create JWT token for the logged-in user
     const accessToken = jwt.sign(
       {
         user: {
@@ -100,10 +101,26 @@ const LoginUser = asyncHandler(async (req, res) => {
         },
       },
       process.env.ACCESS_TOKEN_SECRET,
-      { expiresIn: "60m" }
+      { expiresIn: "60m" } // Token expiration set to 1 hour
     );
-
-    res.status(200).json({ accessToken });
+     
+    res.cookie("token", accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "development", // only over HTTPS in prod
+      sameSite: "strict",
+      maxAge: 60 * 60 * 1000, // 1 hour
+    });
+    // Send the JWT token to the client
+    res.status(200).json({
+      accessToken,
+      user: {
+        handle: user.handle,
+        name: user.name,
+        email: user.email,
+        profileImage: user.profileImage,
+        cfRating: user.cfRating,
+      },
+    });
   } else {
     res.status(401);
     throw new Error("Handle or password is not valid");

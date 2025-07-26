@@ -8,32 +8,56 @@ import AllCodeforces from "../model/allCodeforces.js";
 const SendChallenge = asyncHandler(async (req, res) => {
   const sender = req.user.handle;
   const { receiver } = req.body;
+
   if (!receiver) {
     return res.status(400).json({ message: "Receiver handle is required" });
   }
-  const userFound = await User.findOne({ handle: receiver });
-  if (!userFound) {
-    return res.status(404).json({ message: "Receiver is not on the platform" });
-  }
+
   if (sender === receiver) {
     return res.status(400).json({ message: "You cannot challenge yourself" });
   }
+
+  // Sender can't send multiple at once
   const existing = await Challenge.findOne({
     sender,
-    receiver,
-    status: "pending",
+    status: { $in: ["pending", "accepted"] },
   });
   if (existing) {
-    return res
-      .status(400)
-      .json({ message: "Challenge already sent to this user." });
+    return res.status(400).json({
+      message: "You already have a pending or active challenge.",
+    });
   }
-  const senderUser = await User.findOne({ handle: sender });
-  const receiverUser = await User.findOne({ handle: receiver });
 
-  if (!senderUser || !receiverUser) {
-    return res.status(404).json({ message: "One or both users not found" });
+  // Prevent reverse challenges
+  const reverseExisting = await Challenge.findOne({
+    sender: receiver,
+    receiver: sender,
+    status: { $in: ["pending", "accepted"] },
+  });
+  if (reverseExisting) {
+    return res.status(400).json({
+      message: "This user already sent you a challenge. Respond to that first.",
+    });
   }
+
+  // Optional: prevent receiver from having multiple
+  const receiverActive = await Challenge.findOne({
+    receiver,
+    status: { $in: ["pending", "accepted"] },
+  });
+  if (receiverActive) {
+    return res.status(400).json({
+      message: "Receiver is already engaged in another challenge.",
+    });
+  }
+
+  const receiverUser = await User.findOne({ handle: receiver });
+  const senderUser = await User.findOne({ handle: sender });
+
+  if (!receiverUser || !senderUser) {
+    return res.status(404).json({ message: "User not found" });
+  }
+
   const challenge = new Challenge({
     challengeId: uuidv4(),
     sender,
@@ -43,10 +67,9 @@ const SendChallenge = asyncHandler(async (req, res) => {
     status: "pending",
     timestamp: new Date(),
   });
+
   try {
     await challenge.save();
-    console.log("Challenge saved successfully.");
-
     res.status(200).json({
       message: "Challenge sent successfully",
       challenge,
@@ -60,6 +83,8 @@ const SendChallenge = asyncHandler(async (req, res) => {
   }
 });
 
+
+
 const AcceptChallenge = asyncHandler(async (req, res) => {
   const { challengeId } = req.body;
   if (!challengeId) {
@@ -70,9 +95,24 @@ const AcceptChallenge = asyncHandler(async (req, res) => {
   if (!challenge) {
     return res.status(404).json({ message: "Challenge not found" });
   }
-  if(challenge.status!=='pending'){
-    return res.status(400).json({message:"Already Accepted the request"})
+  if (challenge.status !== "pending") {
+    return res.status(400).json({ message: "Already Accepted or Rejected the request" });
   }
+
+  // Check if receiver already has an accepted challenge
+  const existingAccepted = await Challenge.findOne({
+    receiver: challenge.receiver,
+    status: "accepted",
+  });
+
+  if (existingAccepted) {
+    return res.status(400).json({
+      message: "You already have an accepted challenge. Complete it before accepting another.",
+    });
+  }
+
+  // ... rest of your code to select problems and accept the challenge
+
   const sender = challenge.sender;
   const receiver = challenge.receiver;
   const solvedSender = await getSolvedProblemsSet(sender);
@@ -83,7 +123,7 @@ const AcceptChallenge = asyncHandler(async (req, res) => {
 
   const unsolved = allProblems.filter((p) => {
     const key = `${p.contestId}-${p.index}`;
-    return !solved.has(key) && p.rating; // filter out null/undefined ratings
+    return !solved.has(key) && p.rating;
   });
 
   if (unsolved.length < 3) {
@@ -128,7 +168,6 @@ const AcceptChallenge = asyncHandler(async (req, res) => {
     getRandomProblem(thirdRatedProblems),
   ];
 
-  // Convert to required format
   const questions = selected.map((p) => ({
     name: p.name,
     contestId: p.contestId,
@@ -137,8 +176,11 @@ const AcceptChallenge = asyncHandler(async (req, res) => {
     rating: p.rating,
   }));
 
-  challenge.status = 'accepted';
+  challenge.status = "accepted";
   challenge.questions = questions;
+  challenge.startTime = new Date();
+  challenge.endTime = new Date(Date.now() + 2 * 60 * 60 * 1000); // 2 hours from now
+
   await challenge.save();
 
   res.status(200).json({
@@ -148,7 +190,44 @@ const AcceptChallenge = asyncHandler(async (req, res) => {
 });
 
 const RejectChallenge = asyncHandler(async (req, res) => {
-  res.send("challenge rejected");
+  const { challengeId } = req.body;
+
+  if (!challengeId) {
+    return res.status(400).json({ message: "Challenge ID is required" });
+  }
+
+  const challenge = await Challenge.findOne({ challengeId });
+
+  if (!challenge) {
+    return res.status(404).json({ message: "Challenge not found" });
+  }
+
+  if (challenge.status !== "pending") {
+    return res.status(400).json({ message: "Challenge is already accepted, rejected, or completed." });
+  }
+
+  await Challenge.deleteOne({ challengeId });
+
+  res.status(200).json({ message: "Challenge rejected and deleted successfully" });
+});
+
+const CompleteChallenge = asyncHandler(async (req, res) => {
+  const { challengeId, reason, completedBy } = req.body;
+  const challenge = await Challenge.findOne({ challengeId });
+  if (!challenge) {
+    return res.status(404).json({ message: "Challenge not found" });
+  }
+  if (challenge.status === 'completed' || challenge.status === 'rejected' || challenge.status === 'terminated') {
+    return res.status(400).json({ message: "Challenge already ended" });
+  }
+
+  challenge.status = reason ? 'terminated' : 'completed';
+  if (reason) challenge.terminationReason = reason;
+  if (completedBy) challenge.winner = completedBy;
+  challenge.endTime = new Date();
+  await challenge.save();
+
+  res.status(200).json({ message: "Challenge ended", status: challenge.status });
 });
 
 const GetIncomingChallenges = asyncHandler(async (req, res) => {
@@ -163,6 +242,7 @@ export {
   SendChallenge,
   AcceptChallenge,
   RejectChallenge,
+  CompleteChallenge,
   GetIncomingChallenges,
   GetDuelDetails,
 };

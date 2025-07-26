@@ -24,7 +24,7 @@ const ChallengeSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['pending', 'accepted', 'rejected'],
+    enum: ['pending', 'accepted', 'rejected', 'completed', 'terminated'],
     default: 'pending'
   },
   timestamp: {
@@ -36,7 +36,8 @@ const ChallengeSchema = new mongoose.Schema({
       contestId: Number,
       index: String,
       name: String,
-      url: String
+      url: String,
+      rating: Number
     }
   ],
   startTime: Date,
@@ -45,7 +46,22 @@ const ChallengeSchema = new mongoose.Schema({
     type: String,
     enum: ['sender', 'receiver', null],
     default: null
-  }
+  },
+  terminationReason: {
+    type: String,
+    default: null
+  },
+  completedBy: {
+    type: String,
+    default: null
+  },
+
+  
+  questionWinners: {
+  type: [String], // 'sender', 'receiver', or null
+  default: [null, null, null]
+}
+ 
 });
 
 const Challenge = mongoose.model('Challenge', ChallengeSchema);

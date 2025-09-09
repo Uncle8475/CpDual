@@ -1,0 +1,85 @@
+# CPDual
+
+CPDual is a web application for competitive programming duels, allowing users to challenge each other to solve Codeforces problems in real time.
+
+## Features
+
+- User registration and login with Codeforces handle verification
+- Challenge system: send, accept, reject, and complete duels
+- Automatic problem selection based on user ratings and unsolved problems
+- Rating updates after each duel
+- Daily update of Codeforces problemset
+- JWT-based authentication
+
+## Project Structure
+
+```
+.
+├── Controller/
+├── Routes/
+├── config/
+├── middleware/
+├── model/
+├── utils/
+├── QuestionDecider/
+├── ratingUpdation/
+├── index.js
+├── package.json
+├── .env
+```
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js (v16+)
+- MongoDB instance (local or cloud)
+
+### Installation
+
+1. Clone the repository:
+
+   ```sh
+   git clone <repo-url>
+   cd CpDual
+   ```
+
+2. Install dependencies:
+
+   ```sh
+   npm install
+   ```
+
+3. Create a `.env` file in the root directory with the following variables:
+
+   ```
+   MONGODB_URI=your_mongodb_connection_string
+   ACCESS_TOKEN_SECRET=your_jwt_secret
+   SYSTEM_JWT_SECRET=your_system_jwt_secret
+   ADMIN_TOKEN=your_admin_token
+   NODE_ENV=development
+   PORT=3000
+   ```
+
+4. Start the server:
+   ```sh
+   npm start
+   ```
+
+## API Endpoints
+
+- `POST /api/dashboard/register` - Register a new user
+- `POST /api/dashboard/login` - Login user
+- `GET /api/dashboard/info/:handle` - Get user dashboard info
+- `POST /api/challenge/send` - Send a challenge
+- `POST /api/challenge/accept` - Accept a challenge
+- `POST /api/challenge/reject` - Reject a challenge
+- `POST /api/challenge/complete` - Complete a challenge
+
+## License
+
+ISC
+
+---
+
+For more details, see the source code in [index.js](index.js) and
